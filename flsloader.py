@@ -1,7 +1,7 @@
 # flsloader
 # =========
 #
-# IDA Pro loader module for IFX iPhone baseband firmwares.
+# IDA Pro loader module for IFX iPhone baseband firmwares and Samsung Exynos devices up to GT-i9500
 # Based on a universal scatter loader script by roxfan.
 #
 # Supports loading of:
@@ -10,13 +10,16 @@
 # * iPhone 3G  (X-Gold 608)
 # * iPhone 3GS (X-Gold 608)
 # * iPhone 4   (X-Gold 61x)
+# * Samsung Galaxy S3 GT-i9300 (X-Gold 626)
 #
 # baseband firmwares into IDA Pro.
 #
-# Tested with IDA Pro Advanced 6.1 & 6.2
+# Tested with IDA Pro Advanced 6.6
 
+from idaapi import *
 import struct
 import re
+
 
 IFX_FLS_SIGNATURE = 'CJKT'
 
@@ -49,7 +52,8 @@ def is_zeroinit(ea):
     return matchBytes(ea, "0030A0E30040A0E30050A0E30060A0E3102052E27800A128FCFFFF8A822EB0E13000A12800308145??????E1")
 
 def is_decomp1(ea):
-    return matchBytes(ea, "01C08FE21CFF2FE18A18037801305C07640F01D1047801301D1101D105780130")
+    return (matchBytes(ea,  "01C08FE21CFF2FE18A18037801305C07640F01D1047801301D1101D105780130") or
+            matchBytes(ea,  "01C08FE21CFF2FE18A18037801309C07A40F01D1047801301D1101D105780130"))
 
 def is_decomp0(ea):
     return (matchBytes(ea, "01C08FE21CFF2FE18A180478013025072D0F01D105780130240901D104780130") or
@@ -132,6 +136,7 @@ def ProcessEntry(entry):
     if (idc.SegStart(dst) == idc.BADADDR) or (idc.SegEnd(dst) <(dst+size)):
         idc.AddSeg(dst,(dst+size),0,1,1,0)
     if is_copy(proc):
+        idc.SetSegClass(dst, 'CODE')
         idc.Message("0x%08x: copy(0x%08x, 0x%08x, %x)..." % (proc, src, dst, size))
         buf = idaapi.get_many_bytes(src, size)
         idaapi.patch_many_bytes(dst, buf)
@@ -146,7 +151,7 @@ def ProcessEntry(entry):
         Message("OK\n")
     elif is_decomp0(proc):
         idc.Message("0x%08x: uncompress0(0x%08x, 0x%08x, %x)..." % (proc, src, dst, size))
-        idc.decompress0(src, dst, size)
+        decompress0(src, dst, size)
         idc.Message("OK\n")
     else:
         idc.Message("0x%08x: unknown scatterload function\n" % proc)
@@ -228,6 +233,12 @@ def accept_file(li, n):
             flsversion = 'iPhone X-GOLD 61x baseband'
             arch = "arm:ARMv6"
 
+    li.seek(0x2803c, SEEK_SET)
+    if li.read(4) == IFX_FLS_SIGNATURE:
+        flsversion = 'Samsung X-GOLD 626 baseband'
+        arch = "arm:ARMv6"
+
+
     if flsversion != None:
         idaapi.set_processor_type(arch, SETPROC_ALL|SETPROC_FATAL)
 	idc.ChangeConfig('ARM_SIMPLIFY = NO')
@@ -250,6 +261,8 @@ def load_file(li, neflags, format):
         offset = 0x9A4
         entry_point = dwordAt(li, 0x9dc)
         scattertbl_search_from = start        
+        li.seek(0, SEEK_END)
+        size = li.tell() - offset		
     elif format == 'iPhone X-GOLD 608 baseband':
         # ARM 926
         arch = "arm:ARMv5TE"        
@@ -257,6 +270,8 @@ def load_file(li, neflags, format):
         offset = 0xCF8
         entry_point = dwordAt(li, 0x1100)
         scattertbl_search_from = entry_point        
+        li.seek(0, SEEK_END)
+        size = li.tell() - offset		
     elif format == 'iPhone X-GOLD 61x baseband':
         # ARM 1176
         arch = "arm:ARMv6"        
@@ -264,12 +279,20 @@ def load_file(li, neflags, format):
         offset = 0xCF8
         entry_point = dwordAt(li, 0x1100)
         scattertbl_search_from = entry_point        
+        li.seek(0, SEEK_END)
+        size = li.tell() - offset		
+    elif format == 'Samsung X-GOLD 626 baseband':
+        # ARM 1176
+        arch = "arm:ARMv6"        
+        start = 0x60300000
+        offset = 0x28000
+        entry_point = 0x60349000 #dwordAt(li, 0x28038)
+        scattertbl_search_from = start #entry_point        		
+        size = 0x9D7800
     else:
         Warning("Unknown format name: '%s'" % format)
         return 0
 
-    li.seek(0, SEEK_END)
-    size = li.tell() - offset
 
     if entry_point != 0:
         idc.Message("Entry point = 0x%08x" % entry_point)
@@ -277,6 +300,7 @@ def load_file(li, neflags, format):
     idaapi.set_processor_type(arch, SETPROC_ALL|SETPROC_FATAL)
     idc.ChangeConfig('ARM_SIMPLIFY = NO')
     AddSeg(start, start+size, 0, 1, idaapi.saRelPara, idaapi.scPub)
+    SetSegClass(start, 'CODE')
     li.seek(0)
     li.file2base(offset, start, start+size, 0)
     setup_structs()
