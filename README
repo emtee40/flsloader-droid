@@ -5,7 +5,7 @@
 =====================================================
 
 
-IDA Pro loader module for IFX iPhone baseband firmwares.
+IDA Pro loader module for IFX iPhone baseband firmwares and Samsung Exynos devices up to GT-i9500.
 Based on a universal scatter loader script by roxfan.
 
 Supports loading of:
@@ -14,6 +14,7 @@ Supports loading of:
 * iPhone 3G  (X-Gold 608)
 * iPhone 3GS (X-Gold 608)
 * iPhone 4   (X-Gold 61x)
+* Samsung Galaxy S3 GT-i9300 (X-Gold 626)
 
 baseband firmwares into IDA Pro.
 
@@ -21,4 +22,4 @@ Faster, harder, stronger: Use the IDAPython script make_table.py to identify
 the table of tasks used by the OS initialization routine. This will make your
 life much easier.
 
-Tested with IDA Pro Advanced 6.1 & 6.2.
+Tested with IDA Pro Advanced 6.6.
