@@ -22,4 +22,10 @@ Faster, harder, stronger: Use the IDAPython script make_table.py to identify
 the table of tasks used by the OS initialization routine. This will make your
 life much easier.
 
+Use Analyze/analyze2 to add more functions undetected by IDA.
+
+Use baseband_rename to rename functions based on debug log code
+
+Put iPhone baseband signatures contained from the corresponding zip file into [ida_install_dir]\sig\arm
+
 Tested with IDA Pro Advanced 6.6.
